@@ -22,6 +22,8 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 RUN mkdir -p ./public
+# Leads/audits/events land here as JSONL; mount a volume at /app/data in prod.
+RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static

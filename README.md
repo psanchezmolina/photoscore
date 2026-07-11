@@ -1,39 +1,36 @@
-# ListingRoom
+# PhotoScore
 
-Writing the listing is the part every seller hates. ListingRoom does it from one product photo, in seconds, for free.
+Your Shopify store's product photos, graded in about 60 seconds. Free, no signup.
 
-Live: **[listingroom.pablo.ky](https://listingroom.pablo.ky)**
-
-![ListingRoom result view](docs/screenshot.png)
+Live: **[photoscore.pablo.ky](https://photoscore.pablo.ky)**
 
 ## What it does
 
-Give it a product. It writes the whole listing:
+Paste your store URL. PhotoScore pulls a sample of your real catalog through Shopify's public `products.json`, looks at the actual photos, and returns:
 
-- **SEO title** (keyword front-loaded, 60-80 chars)
-- **Product description** (2-3 tight paragraphs)
-- **5 benefit bullets**
-- **3 ad copy variants** (different angles)
-- **1 social caption**
-- **10-15 keywords** buyers actually search
+- A store-level **Photo Score** (A to F, plus 0-100)
+- A per-product breakdown: grade, issues, genuine strengths
+- The **worst offender**: the photo costing you the most clicks
+- The **top 3 fixes**, ordered by conversion impact, all doable without a photographer
 
-Two ways in:
-
-- **Upload a photo.** Drag in a JPEG, PNG, WebP or GIF.
-- **Paste a URL.** Drop a product page link and ListingRoom pulls the image and existing copy for you.
-
-The result page has a single CTA: **Open in Photoroom**. The words are the free hook. The visual is the natural next step.
+The full per-product report is available by email. The natural next step after seeing your grade is fixing the photos: that's the "Fix it with Photoroom" button (my referral link, see disclosure below).
 
 ## How it works
 
-One page. One API route. One Claude call.
+One page, four API routes, one model call.
 
-- **The Claude call** goes to `claude-opus-4-8` with vision and a JSON schema response. The model reads the actual photo, so the copy describes the real product and never invents specs it cannot see.
-- **URL mode** tries Shopify's public `/products/<handle>.json` first, then falls back to Open Graph tags. Amazon and Etsy block server requests. The tool doesn't pretend otherwise: it tells you and offers photo upload instead.
-- **SSRF-guarded.** Private hosts and resolved private IPs are rejected before every request, including on each redirect hop. HTML responses are capped at 5 MB. Scraped image URLs are re-validated before download.
-- **Abuse protection.** In-memory rate limit (3 generations per hour per IP), 5 MB image cap, jpeg/png/webp/gif only, base64 payload validated before it reaches the model.
+- `POST /api/audit`: fetches `/products.json` (SSRF-guarded, redirect-revalidated), samples up to 6 products spread across the catalog, downloads the images at 800px via Shopify's CDN width param, and sends them in a single `claude-opus-4-8` vision call with a JSON schema. The auditor prompt grades only what is visible and weighs catalog consistency heavily.
+- `POST /api/lead` and `POST /api/event`: append-only JSONL logs (leads, funnel events), no database.
+- `GET /api/stats`: the funnel (visits, audits, emails, referral clicks) sliced by UTM, behind a key.
+- Rate limit: 3 audits per hour per IP.
 
-Deliberately **not** here: no database, no auth, no analytics, no tracking. The product is the output, not your data.
+## Why this exists
+
+Built in one afternoon (inside a 4-hour budget) for Photoroom's growth hiring challenge: build something that gets Shopify merchants to show real interest, then distribute it from a standing start of zero audience.
+
+The thesis: merchants' deepest photo pain isn't technical, it's the quiet fear that their store looks amateur. A grade makes that fear concrete, personal, and fixable in one glance, and a store URL is the lowest-friction input there is (you can even grade a store that isn't yours).
+
+PhotoScore forks the skeleton of [ListingRoom](https://github.com/psanchezmolina/listingroom), an earlier one-day build: same stack, same guards, new product.
 
 ## Run it locally
 
@@ -41,38 +38,11 @@ Deliberately **not** here: no database, no auth, no analytics, no tracking. The 
 npm install
 cp .env.example .env.local   # add your ANTHROPIC_API_KEY
 npm run dev                  # http://localhost:3000
-```
-
-Run the test suite:
-
-```bash
 npm test
 ```
 
 Stack: Next.js 14 (App Router), TypeScript, Tailwind.
 
-## Run with Docker
+## Disclosure
 
-```bash
-docker compose up --build    # reads .env.local, serves on :3000
-```
-
-## Why this exists
-
-I built ListingRoom in one day, as a growth-marketing portfolio piece for Photoroom.
-
-The thesis is simple. Sellers need listing copy before they need anything else. Give them that for free, from their real product, and the next step is obvious: the photo. That's Photoroom.
-
-The trick isn't the AI. It's the handoff.
-
-A few honest decisions along the way:
-
-1. **No Amazon/Etsy scraping.** They block server requests. Faking it with a scraping API was possible but added cost and fragility to a one-day build, so the tool says so and falls back to photo upload.
-2. **No analytics in v1.** The funnel I would measure (upload → generate → copy → CTA click) is designed, not shipped. Shipping the loop mattered more than instrumenting it on day one.
-3. **One model call, not a pipeline.** Vision plus structured outputs in a single request keeps it fast, cheap (about $0.05 per kit) and hard to break.
-
-Phase two is where this gets interesting: programmatic SEO category pages to compound the organic surface, funnel analytics to measure the handoff, a scraping API to cover Amazon and Etsy.
-
-The design language intentionally echoes Photoroom (ink `#0A0A0A`, accent `#492FFB`, Inter, generous whitespace), extracted from photoroom.com itself.
-
-Made with ♥ for Photoroom by Pablo Sánchez. Not affiliated with Photoroom.
+Made by Pablo Sánchez. Not affiliated with Photoroom. I'm part of the [Photoroom with Friends](https://www.photoroom.com/campaign/photoroom-with-friends) referral program, and the CTA uses my referral link.

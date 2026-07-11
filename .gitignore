@@ -8,3 +8,5 @@ next-env.d.ts
 .temp
 .playwright-mcp
 _estado.md
+data/
+.playwright-mcp/

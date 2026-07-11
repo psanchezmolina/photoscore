@@ -1,201 +1,172 @@
 "use client";
 
-import { useState } from "react";
-import type { ListingKit } from "@/lib/kit";
-import ModeToggle, { type InputMode } from "@/components/ModeToggle";
-import UploadZone, { type ImagePayload } from "@/components/UploadZone";
-import UrlInput from "@/components/UrlInput";
-import ContextInput from "@/components/ContextInput";
-import LoadingState from "@/components/LoadingState";
-import ResultView from "@/components/ResultView";
+import { useEffect, useState, type FormEvent } from "react";
+import AnnouncementBar from "@/components/AnnouncementBar";
+import SiteFooter from "@/components/SiteFooter";
+import AuditLoading from "@/components/AuditLoading";
+import GradeResult from "@/components/GradeResult";
+import { getUtm, initUtm, trackEvent } from "@/components/analytics";
+import type { ApiError, AuditResult } from "@/components/audit";
 
-type Status = "idle" | "generating" | "result" | "error";
+type Status = "idle" | "loading" | "result" | "error";
+
+interface ErrorState {
+  code: string;
+  message: string;
+}
 
 export default function Home() {
   const [status, setStatus] = useState<Status>("idle");
-  const [mode, setMode] = useState<InputMode>("photo");
-  const [image, setImage] = useState<ImagePayload | null>(null);
-  const [url, setUrl] = useState("");
-  const [context, setContext] = useState("");
-  const [kit, setKit] = useState<ListingKit | null>(null);
-  const [resultImage, setResultImage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [storeUrl, setStoreUrl] = useState("");
+  const [result, setResult] = useState<AuditResult | null>(null);
+  const [error, setError] = useState<ErrorState | null>(null);
 
-  const generateDisabled =
-    (mode === "photo" && !image) || (mode === "url" && !url.trim());
+  // First load: capture UTM and register a pageview (once).
+  useEffect(() => {
+    initUtm();
+    trackEvent("pageview");
+  }, []);
 
-  function startOver() {
+  function reset() {
     setStatus("idle");
-    setMode("photo");
-    setImage(null);
-    setUrl("");
-    setContext("");
-    setKit(null);
-    setResultImage(null);
+    setStoreUrl("");
+    setResult(null);
     setError(null);
   }
 
-  async function handleGenerate() {
-    if (mode === "photo" && !image) return;
-    if (mode === "url" && url.trim() === "") return;
-    setStatus("generating");
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    const trimmed = storeUrl.trim();
+    if (!trimmed) return;
+
+    setStatus("loading");
     setError(null);
+    trackEvent("audit_started");
+
     try {
-      const payload =
-        mode === "photo"
-          ? {
-              imageBase64: image!.base64,
-              mediaType: image!.mediaType,
-              extraContext: context || undefined,
-            }
-          : { url: url.trim(), extraContext: context || undefined };
-      const res = await fetch("/api/generate", {
+      const res = await fetch("/api/audit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ storeUrl: trimmed, utm: getUtm() }),
       });
-      const data = await res.json();
+
       if (!res.ok) {
-        if (typeof data.error === "string" && data.error.startsWith("scrape_")) {
-          setMode("photo"); // fallback: one tap from photo upload
-        }
-        throw new Error(data.message ?? "Something went wrong. Please try again.");
+        const data = (await res.json().catch(() => null)) as ApiError | null;
+        setError({
+          code: data?.error ?? "unknown",
+          message:
+            data?.message ??
+            "Something went wrong grading your store. Please try again.",
+        });
+        setStatus("error");
+        return;
       }
-      setKit(data.kit);
-      setResultImage(mode === "photo" ? image!.previewUrl : data.image);
+
+      const data = (await res.json()) as AuditResult;
+      setResult(data);
       setStatus("result");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      trackEvent("audit_completed", { grade: data.score.grade });
+    } catch {
+      setError({
+        code: "network",
+        message:
+          "We couldn't reach the grader. Check your connection and try again.",
+      });
       setStatus("error");
     }
   }
 
-  if (status === "result" && kit && resultImage) {
-    return (
-      <div className="flex min-h-screen flex-col bg-white">
-        <TopBar />
-        <main className="flex-1">
-          <ResultView
-            imageSrc={resultImage}
-            kit={kit}
-            onStartOver={startOver}
-          />
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  if (status === "generating") {
+  // Full-screen loading, no top bar.
+  if (status === "loading") {
     return (
       <div className="flex min-h-screen flex-col bg-hero-gradient">
-        <main className="flex flex-1 items-center justify-center px-5">
-          <LoadingState />
+        <main className="flex flex-1 items-center justify-center">
+          <AuditLoading />
         </main>
-        <Footer />
+        <SiteFooter />
       </div>
     );
   }
 
-  // idle | error
+  if (status === "result" && result) {
+    return (
+      <div className="flex min-h-screen flex-col bg-white">
+        <AnnouncementBar />
+        <main className="flex-1">
+          <GradeResult result={result} onReset={reset} />
+        </main>
+        <SiteFooter />
+      </div>
+    );
+  }
+
+  // idle | error -> hero
   return (
     <div className="flex min-h-screen flex-col bg-hero-gradient">
-      <TopBar />
-      <main className="flex flex-1 items-start justify-center px-5 py-8 sm:py-10">
-        <div className="w-full max-w-xl">
-          <header className="text-center">
-            <h1 className="text-balance text-4xl font-semibold leading-[1.08] tracking-tight-hero text-ink sm:text-[44px] sm:leading-[1.05]">
-              Turn a product {mode === "photo" ? "photo" : "link"} into a
-              ready-to-paste listing kit
-            </h1>
-            <p className="mx-auto mt-3 max-w-lg text-base leading-relaxed text-muted">
-              SEO title, description, bullets, ad copy, caption and keywords,
-              generated from your real product in seconds. Free.
-            </p>
-          </header>
+      <AnnouncementBar />
+      <main className="flex flex-1 items-center justify-center px-5 py-12 sm:py-16">
+        <div className="w-full max-w-2xl text-center">
+          <h1 className="text-balance text-4xl font-semibold leading-[1.08] tracking-tight-hero text-ink sm:text-[56px] sm:leading-[1.04]">
+            What&apos;s your store&apos;s Photo Score?
+          </h1>
+          <p className="mx-auto mt-4 max-w-lg text-lg leading-relaxed text-muted">
+            Your product photos, graded in 60 seconds. Free.
+          </p>
 
-          <div className="mt-6 rounded-3xl border border-ink/10 bg-white/70 p-5 shadow-sm backdrop-blur-sm sm:p-6">
-            {error && (
-              <div
-                role="alert"
-                className="mb-5 rounded-btn bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
-              >
-                {error}
-              </div>
-            )}
+          <form
+            onSubmit={handleSubmit}
+            className="mx-auto mt-8 flex max-w-xl flex-col gap-2.5 sm:flex-row"
+          >
+            <label htmlFor="store-url" className="sr-only">
+              Your Shopify store URL
+            </label>
+            <input
+              id="store-url"
+              type="url"
+              inputMode="url"
+              autoComplete="url"
+              value={storeUrl}
+              onChange={(e) => {
+                setStoreUrl(e.target.value);
+                if (status === "error") setError(null);
+              }}
+              placeholder="https://yourstore.com"
+              className="w-full flex-1 rounded-btn border border-ink/10 bg-white px-4 py-3.5 text-[16px] text-ink shadow-sm placeholder:text-muted transition-colors focus:border-sky-border focus:outline-none focus:ring-2 focus:ring-sky-border/30"
+            />
+            <button
+              type="submit"
+              disabled={!storeUrl.trim()}
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-btn bg-accent px-7 py-3.5 text-[16px] font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-sky disabled:text-sky-text"
+            >
+              Get my Photo Score
+            </button>
+          </form>
 
-            <div className="flex justify-center">
-              <ModeToggle mode={mode} onChange={setMode} />
-            </div>
-
-            <div className="mt-6">
-              {mode === "photo" ? (
-                <UploadZone
-                  image={image}
-                  onImage={(img) => {
-                    setImage(img);
-                    if (status === "error") {
-                      setError(null);
-                      setStatus("idle");
-                    }
-                  }}
-                  onError={(msg) => {
-                    setError(msg);
-                    setStatus("error");
-                  }}
-                />
-              ) : (
-                <UrlInput value={url} onChange={setUrl} />
+          {error && (
+            <div
+              role="alert"
+              className="mx-auto mt-4 max-w-xl rounded-btn bg-red-50 px-4 py-3 text-left text-sm font-medium text-red-700"
+            >
+              {error.message}
+              {error.code === "not_shopify" && (
+                <span className="mt-1 block font-normal text-red-600">
+                  Make sure you pasted your store&apos;s home page, for example
+                  https://mystore.com
+                </span>
               )}
             </div>
+          )}
 
-            <div className="mt-4">
-              <ContextInput value={context} onChange={setContext} />
-            </div>
-
-            <button
-              type="button"
-              onClick={handleGenerate}
-              disabled={generateDisabled}
-              className="mt-4 inline-flex w-full items-center justify-center rounded-btn bg-accent px-8 py-3.5 text-[16px] font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-sky disabled:text-sky-text"
-            >
-              Generate my listing kit
-            </button>
-
-            <p className="mt-2.5 text-center text-xs text-muted">
-              No sign-up required · Your photo never leaves the generation step.
-            </p>
-          </div>
+          <p className="mt-4 text-sm text-muted">
+            Free. No signup. ~60 seconds.
+          </p>
+          <p className="mt-2 text-xs text-muted">
+            Built by Pablo Sanchez in one afternoon for the Photoroom growth
+            challenge.
+          </p>
         </div>
       </main>
-      <Footer />
+      <SiteFooter />
     </div>
-  );
-}
-
-function TopBar() {
-  return (
-    <header className="bg-accent py-2.5 text-center">
-      <span className="text-sm font-semibold uppercase tracking-[0.18em] text-white">
-        ListingRoom
-      </span>
-    </header>
-  );
-}
-
-function Footer() {
-  return (
-    <footer className="px-5 py-4 text-center text-xs text-muted">
-      Made with ♥ by{" "}
-      <a
-        href="https://pablo.ky"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="font-medium text-ink underline-offset-2 transition-colors hover:text-accent hover:underline"
-      >
-        Pablo Sánchez
-      </a>{" "}
-      to join the Photoroom Growth team · Not affiliated with Photoroom
-    </footer>
   );
 }
