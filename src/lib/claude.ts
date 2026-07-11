@@ -167,7 +167,9 @@ export async function generateScore(
   });
 
   const response = await client.messages.create({
-    model: "claude-opus-4-8",
+    // Sonnet 5: ~70% cheaper than Opus per audit (~$0.03 vs ~$0.08) with
+    // near-Opus quality on this task. Keeps the whole campaign under ~$5.
+    model: "claude-sonnet-5",
     max_tokens: 6000,
     thinking: { type: "adaptive" },
     output_config: {
