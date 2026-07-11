@@ -83,17 +83,7 @@ export async function POST(req: Request) {
     });
 
     const auditId = randomUUID();
-    await appendLog("audits", {
-      auditId,
-      domain: catalog.domain,
-      grade: score.grade,
-      score: score.score,
-      productCount: images.length,
-      utm,
-      internal: isInternal,
-    });
-
-    return NextResponse.json({
+    const payload = {
       auditId,
       store: { name: catalog.storeName, domain: catalog.domain },
       score: {
@@ -110,7 +100,20 @@ export async function POST(req: Request) {
           strengths: p.strengths,
         })),
       },
+    };
+    // Full payload persisted so /r/<auditId> can serve a shareable report.
+    await appendLog("audits", {
+      auditId,
+      domain: catalog.domain,
+      grade: score.grade,
+      score: score.score,
+      productCount: images.length,
+      utm,
+      internal: isInternal,
+      result: payload,
     });
+
+    return NextResponse.json(payload);
   } catch (err) {
     if (err instanceof CatalogError) {
       return jsonError(422, err.code, CATALOG_MESSAGES[err.code]);

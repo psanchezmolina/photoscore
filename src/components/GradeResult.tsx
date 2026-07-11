@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { gradeTheme, type AuditResult } from "./audit";
 import { getUtm, trackEvent } from "./analytics";
 import ProductCard from "./ProductCard";
@@ -24,12 +25,15 @@ export default function GradeResult({ result, onReset }: GradeResultProps) {
     trackEvent("referral_click");
   }
 
-  const referralHref = (() => {
+  // Set after mount: getUtm() reads sessionStorage, which the server can't
+  // see, so putting it in the initial render causes a hydration mismatch.
+  const [referralHref, setReferralHref] = useState(PHOTOROOM_URL);
+  useEffect(() => {
     const utm = getUtm();
-    if (!utm) return PHOTOROOM_URL;
+    if (!utm) return;
     const sep = PHOTOROOM_URL.includes("?") ? "&" : "?";
-    return `${PHOTOROOM_URL}${sep}${utm}`;
-  })();
+    setReferralHref(`${PHOTOROOM_URL}${sep}${utm}`);
+  }, []);
 
   return (
     <div className="mx-auto w-full max-w-3xl px-5 py-10 sm:py-14">
