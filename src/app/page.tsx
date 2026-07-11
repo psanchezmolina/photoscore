@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import AnnouncementBar from "@/components/AnnouncementBar";
 import AuditLoading from "@/components/AuditLoading";
 import GradeResult from "@/components/GradeResult";
+import SiteFooter from "@/components/SiteFooter";
 import { getUtm, initUtm, trackEvent } from "@/components/analytics";
 import type { ApiError, AuditResult } from "@/components/audit";
 
@@ -93,6 +94,7 @@ export default function Home() {
         <main className="flex-1">
           <GradeResult result={result} onReset={reset} />
         </main>
+        <SiteFooter />
       </div>
     );
   }
@@ -160,6 +162,7 @@ export default function Home() {
           </p>
         </div>
       </main>
+      <SiteFooter />
     </div>
   );
 }

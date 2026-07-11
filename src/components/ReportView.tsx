@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import type { AuditResult } from "./audit";
 import GradeResult from "./GradeResult";
 import AnnouncementBar from "./AnnouncementBar";
+import SiteFooter from "./SiteFooter";
 import { initUtm, trackEvent } from "./analytics";
 
 /** Shareable report page body: same result view, reset goes home. */
@@ -24,6 +25,7 @@ export default function ReportView({ result }: { result: AuditResult }) {
           }}
         />
       </main>
+      <SiteFooter />
     </div>
   );
 }
