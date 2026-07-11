@@ -2,7 +2,6 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import AnnouncementBar from "@/components/AnnouncementBar";
-import SiteFooter from "@/components/SiteFooter";
 import AuditLoading from "@/components/AuditLoading";
 import GradeResult from "@/components/GradeResult";
 import { getUtm, initUtm, trackEvent } from "@/components/analytics";
@@ -83,7 +82,6 @@ export default function Home() {
         <main className="flex flex-1 items-center justify-center">
           <AuditLoading />
         </main>
-        <SiteFooter />
       </div>
     );
   }
@@ -95,7 +93,6 @@ export default function Home() {
         <main className="flex-1">
           <GradeResult result={result} onReset={reset} />
         </main>
-        <SiteFooter />
       </div>
     );
   }
@@ -107,10 +104,11 @@ export default function Home() {
       <main className="flex flex-1 items-center justify-center px-5 py-12 sm:py-16">
         <div className="w-full max-w-2xl text-center">
           <h1 className="text-balance text-4xl font-semibold leading-[1.08] tracking-tight-hero text-ink sm:text-[56px] sm:leading-[1.04]">
-            What&apos;s your store&apos;s Photo Score?
+            What&apos;s your Shopify&apos;s Photo Score?
           </h1>
           <p className="mx-auto mt-4 max-w-lg text-lg leading-relaxed text-muted">
-            Your product photos, graded in 60 seconds. Free.
+            Find out if your product photos look pro, or amateur. Graded in 60
+            seconds.
           </p>
 
           <form
@@ -160,13 +158,8 @@ export default function Home() {
           <p className="mt-4 text-sm text-muted">
             Free. No signup. ~60 seconds.
           </p>
-          <p className="mt-2 text-xs text-muted">
-            Built by Pablo Sanchez in one afternoon for the Photoroom growth
-            challenge.
-          </p>
         </div>
       </main>
-      <SiteFooter />
     </div>
   );
 }

@@ -141,8 +141,8 @@ export default function GradeResult({ result, onReset }: GradeResultProps) {
           Fix it with Photoroom
         </a>
         <p className="mt-3 text-xs text-muted">
-          Opens Photoroom in a new tab. Batch-edit your product photos in
-          minutes.
+          A photographer shoot runs $200+. Batch-edit your whole catalog to
+          studio-quality in minutes with Photoroom.
         </p>
       </div>
 
