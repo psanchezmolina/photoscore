@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { appendLog } from "@/lib/store-log";
+import { sendReportEmail } from "@/lib/send-report";
 
 export const runtime = "nodejs";
 
@@ -19,12 +20,26 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
+  const auditId = typeof body.auditId === "string" ? body.auditId.slice(0, 64) : null;
+
+  // The lead is captured first, always: email delivery failing must never
+  // lose the signup.
   await appendLog("leads", {
     email,
-    auditId: typeof body.auditId === "string" ? body.auditId.slice(0, 64) : null,
+    auditId,
     storeDomain: typeof body.storeDomain === "string" ? body.storeDomain.slice(0, 200) : null,
     grade: typeof body.grade === "string" ? body.grade.slice(0, 2) : null,
     utm: typeof body.utm === "string" ? body.utm.slice(0, 300) : null,
   });
-  return NextResponse.json({ ok: true });
+
+  let delivery: { sent: boolean; error?: string } = { sent: false, error: "no_audit_id" };
+  if (auditId) {
+    delivery = await sendReportEmail(email, auditId);
+    await appendLog("events", {
+      name: "report_email",
+      props: { sent: delivery.sent, error: delivery.error ?? null },
+    });
+  }
+
+  return NextResponse.json({ ok: true, sent: delivery.sent });
 }
