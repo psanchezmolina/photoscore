@@ -7,6 +7,7 @@ interface EmailGateProps {
   auditId: string;
   storeDomain: string;
   grade: string;
+  onSent?: () => void;
 }
 
 type GateStatus = "idle" | "sending" | "sent" | "error";
@@ -17,6 +18,7 @@ export default function EmailGate({
   auditId,
   storeDomain,
   grade,
+  onSent,
 }: EmailGateProps) {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<GateStatus>("idle");
@@ -54,6 +56,7 @@ export default function EmailGate({
       }
       trackEvent("gate_submitted");
       setStatus("sent");
+      onSent?.();
     } catch (err) {
       setError(
         err instanceof Error

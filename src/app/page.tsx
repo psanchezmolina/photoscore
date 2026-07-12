@@ -27,13 +27,6 @@ export default function Home() {
     trackEvent("pageview");
   }, []);
 
-  function reset() {
-    setStatus("idle");
-    setStoreUrl("");
-    setResult(null);
-    setError(null);
-  }
-
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const trimmed = storeUrl.trim();
@@ -92,7 +85,7 @@ export default function Home() {
       <div className="flex min-h-screen flex-col bg-white">
         <AnnouncementBar />
         <main className="flex-1">
-          <GradeResult result={result} onReset={reset} />
+          <GradeResult result={result} />
         </main>
         <SiteFooter />
       </div>
@@ -109,8 +102,11 @@ export default function Home() {
             What&apos;s your Shopify&apos;s Photo Score?
           </h1>
           <p className="mx-auto mt-4 max-w-lg text-lg leading-relaxed text-muted">
-            Find out if your product photos look pro, or amateur. Graded in 60
-            seconds.
+            Find out if{" "}
+            <strong className="font-semibold text-ink">
+              your product photos look pro, or amateur
+            </strong>
+            . Graded in 60 seconds.
           </p>
 
           <form

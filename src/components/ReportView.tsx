@@ -18,12 +18,7 @@ export default function ReportView({ result }: { result: AuditResult }) {
     <div className="flex min-h-screen flex-col">
       <AnnouncementBar />
       <main className="flex-1">
-        <GradeResult
-          result={result}
-          onReset={() => {
-            window.location.href = "/";
-          }}
-        />
+        <GradeResult result={result} />
       </main>
       <SiteFooter />
     </div>
